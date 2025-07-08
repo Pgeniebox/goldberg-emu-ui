@@ -29,9 +29,7 @@ const { json } = express;
 const userHomeDir = os.homedir();
 
 const storageDirectory = 'C:/database/';
-if (!existsSync(storageDirectory)) {
-  mkdirSync(storageDirectory, { recursive: true });
-}
+
 
 
 
@@ -159,6 +157,15 @@ if(clients.steam && clients.steam.readyState === WebSocket.OPEN){
 
 app.get('/startup', (req, res) => {
   res.sendFile(path.join(path.dirname(process.execPath),'app', 'public','startup.html'));
+});
+const cfgClient={};
+app.get('/wscfg', (req, res) => {
+  const {cfg}=req.query;
+  if(cfg==='cleint'){
+return cfgClient.room=res;
+  }
+  cfgClient.room.status(200).send(cfg);
+return  res.status(200).send('ok');
 });
 app.get('/fixGameDetails', async (req, res) => {
   const { appid} = req.query;
