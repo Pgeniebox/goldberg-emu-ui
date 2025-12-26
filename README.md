@@ -1,5 +1,20 @@
 # Non-steam-games-manager
 
+How to use:
+launch the setup to install steam+.
+after install you should run the installed application to setup your existing steam application.
+steamui is folder in steam location in your pc, our application will modify three files to make this work:
+
+steam/steamui/index.html in this file we will change the loaded script library to librory, whene we change the letter we will prevent steam to check its content.
+steam/steamui/library this file will be ignored because the index.html have librory and not library.
+steam/steamui/chunk~2dcc5aaf7.js we will change this file just to give access to achievement controle.
+
+you can run the service from any console or browser by starting this url :"steam+://server" or from the application.
+without steam plus server the tray icon will not appear.
+
+info:
+my application use puppiter to load games metadata like achievments and more so if you dont see the achievements in your game you should fix details in our steam manager > game > settings > fix game details >> , note: keep retry until you see the achievements in your game.
+
 - 👋 Hi, I’m @Pgeniebox
 
 SteamOS Non-Steam Game Manager
