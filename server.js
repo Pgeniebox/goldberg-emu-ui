@@ -30,6 +30,8 @@ const userHomeDir = os.homedir();
 
 
 
+
+
 let steamPath;
 let chromePath;
 
@@ -155,6 +157,15 @@ if(clients.steam && clients.steam.readyState === WebSocket.OPEN){
 
 app.get('/startup', (req, res) => {
   res.sendFile(path.join(path.dirname(process.execPath),'app', 'public','startup.html'));
+});
+const cfgClient={};
+app.get('/wscfg', (req, res) => {
+  const {cfg}=req.query;
+  if(cfg==='cleint'){
+return cfgClient.room=res;
+  }
+  cfgClient.room.status(200).send(cfg);
+return  res.status(200).send('ok');
 });
 app.get('/fixGameDetails', async (req, res) => {
   const { appid} = req.query;
@@ -298,7 +309,6 @@ if(steamclientPath){
        configsApp!==undefined && configsApp!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'configs.app.ini'), configsApp);
         depot!==undefined && depot!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'depots.txt'), depot);
        rgAchievements!==undefined && rgAchievements!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'rgAchievements.json'), JSON.stringify(rgAchievements));
-       //fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'disable_overlay.txt'), '');
    return res.send(`${appname} is installed successfully!`);
   } catch (err) {
     log(err);
