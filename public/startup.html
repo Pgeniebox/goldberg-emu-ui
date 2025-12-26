@@ -6,6 +6,41 @@
   <title>Steam+</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+<style>
+  .body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #1a202c;
+    align-content: center;
+    justify-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .steamService {
+    pointer-events:all ;
+    cursor: pointer;
+    user-select: none;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 16px;
+    background-color: #4a91e2ad;
+    width: 50%;
+    height: 50px;
+    margin: 5px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    box-shadow: 5px 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  .steamService:hover {
+    background-color: #3578e5;
+    box-shadow: 7px 6px 8px rgba(0, 0, 0, 0.2);
+  }
+</style>
 <body class="bg-gray-900 text-white h-screen overflow-hidden">
 
   <!-- Title bar -->
@@ -16,6 +51,7 @@
       <button onclick="window.api.close()" class="px-2">×</button>
     </div>
   </div>
+<div class="steamService" onclick="window.open('steam+://server')">Run Steam plus service >></div>
 
   <!-- App content -->
   <div id="app" class="w-full max-w-md p-6 mx-auto rounded-2xl bg-gray-800 shadow-xl text-center space-y-6 transition-all duration-500 mt-10">
@@ -24,17 +60,16 @@
     <div id="step-info" class="space-y-4">
       <h1 class="text-2xl font-bold text-green-400">Welcome to Steam+</h1>
       <p class="text-gray-300">
-        Steam+ starts automatically with Steam and shuts down when Steam does.
+        Steam+ starts automatically with Steam.
         It runs silently in the Windows system tray and manages your non-Steam games.
       </p>
       <p class="text-gray-400">
-        To access the game manager, open Steam+ from the tray icon.
+        To access the game manager, open Steam+ from the tray icon.\nNote: if you have any problems, go to the application properties and set run as administrator.
       </p>
       <button onclick="startSetup()" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-xl text-white font-semibold">
         Continue to Steam+ Configuration
       </button>
     </div>
-
     <!-- Step 2: Loading -->
     <div id="step-loading" class="hidden space-y-4">
       <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 mx-auto"></div>

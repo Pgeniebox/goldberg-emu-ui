@@ -179,6 +179,7 @@ ipcMain.handle('setupManager', async () => {
             reject(err);
           } else {
             resolve(data);
+
           }
         });
       });
@@ -206,7 +207,7 @@ ipcMain.handle('setupManager', async () => {
     modifiedContent = fs.readFileSync(path.join(steamPath,'chunk~2dcc5aaf7.js'), 'utf8');
     if(!modifiedContent.includes('//# sourceMappingURL')) return false;
     modifiedContent = modifiedContent.replace('//# sourceMappingURL', '//# sou');
-    modifiedContent = modifiedContent.replace('"OnAchievementChange",null);const y=new f;', '"OnAchievementChange",null);const y=new f;window.Ach=y;');
+    modifiedContent = modifiedContent.replace('const b=new f;', 'const b=new f;window.Ach=b;');
     fs.writeFileSync(path.join(steamPath,'chunk~2dcc5aaf7.js'),modifiedContent,'utf-8');
     return false;
     } catch (err) {

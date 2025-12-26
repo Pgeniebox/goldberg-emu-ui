@@ -1,16 +1,15 @@
-let ws; 
+let ws=null; 
 
 
- function waitForServerAndConnect() {
+ function waitForServerAndConnect() {      
+  if(null!=ws){return true;}
 
+let servok=false;
   fetch('http://localhost:3005/checkServer')
     .then(async res => {
-      
+      if(null!=ws){return servok= true;}
       if (res.ok) {
-        const switchUi = await SteamClient.Storage.GetString('uiMode').catch(()=>undefined);
-      if(!switchUi?.result&&switchUi==='4'){
-        await SteamClient.Storage.SetString('uiMode', '7').catch(()=>undefined);
-        SteamClient.UI.SetUIMode(4);return;}
+        
         ws = new WebSocket('ws://localhost:8080');
 
         ws.onopen = () => {
@@ -36,41 +35,18 @@ let ws;
         ws.onerror = (e) => {
           console.log(e);
         };
+        servok=true;
               } else {
+                servok=false;
                 console.log('Server not available, retrying...');
-      console.log('Waiting for server...');
-      const uiMode = await SteamClient.UI.GetUIMode();
- if(uiMode===4){
-  await SteamClient.Storage.SetString('uiMode', '4').catch(()=>undefined);
-  SteamClient.UI.SetUIMode(7);
-}else{
-  const olh = location.href;
-  location.href = 'steam+://';
-  setTimeout(async()=>{location.href = olh;
-    ///waitForServerAndConnect();
-  }, 2000);  
-}
-        
       }
     })
     .catch(async() => {
+      servok=false;
       console.log('Server not available, retrying...');
-      console.log('Waiting for server...');
-      const uiMode = await SteamClient.UI.GetUIMode();
- if(uiMode===4){
-  await SteamClient.Storage.SetString('uiMode', '4').catch(()=>undefined);
-  SteamClient.UI.SetUIMode(7);
-}else{
-  const olh = location.href;
-  location.href = 'steam+://';
-  setTimeout(async()=>{location.href = olh;
-    ///waitForServerAndConnect();
-  }, 2000);  
-}
-
        });
+       return servok;
 }
-waitForServerAndConnect();
 
 async function getAvailableGames() {
   const apps =typeof this.collectionStore!=='undefined'?this.collectionStore.appTypeCollectionMap.get('type-games'):null;
@@ -80,7 +56,7 @@ async function getAvailableGames() {
   if(!sc&&!ads&&!apps&&ws.readyState !== WebSocket.OPEN)return setTimeout(getAvailableGames, 1000);
   const d = { installed: [], available: [] };
 
-  const installedGames = await sc.Storage.GetString('installedGames').catch(undefined => undefined) || '[]';
+  const installedGames = await sc.Storage.GetString('installedGames').catch(() => undefined) || '[]';
   d.installed = JSON.parse(installedGames);
 
   const tasks = apps.allApps.map(async (a) => {
@@ -115,14 +91,17 @@ async function getAvailableGames() {
 }
 
 async function installGame(g) {
-  let installedGame = await SteamClient.Storage.GetString('installedGames').catch(undefined => undefined) || '[]';
-  installedGame = installedGame.length? JSON.parse(installedGame):[];
+  console.log('installing game',g);
+  let installedGame = await SteamClient.Storage.GetString('installedGames').catch(() => undefined) || undefined;
+installedGame=undefined==installedGame?[]:JSON.parse(installedGame);
+//installedGame = installedGame.length? JSON.parse(installedGame):[];
   let searchResult = await searchstore.FetchSearchSuggestions(g.name, undefined);
   if (searchResult.total === 0) {
     const dirName = g.dir.split("\\").slice(-2, -1)[0];
     searchResult = await searchstore.FetchSearchSuggestions(dirName, undefined);
   }
   if (searchResult.total !== 0) {
+    console.log('search result:',g.dir);
     const response = await fetch(`http://localhost:3005/setup/?appid=${searchResult.items[0].m_unAppID}&dir=${g.dir}&appname=${searchResult.items[0].m_strName}&profileID=${g.profileID}`);
     let res = response.ok;
     let message = await response.text();
@@ -132,7 +111,7 @@ async function installGame(g) {
         SteamClient.Storage.SetString(g.gameid, String(searchResult.items[0].m_unAppID));
         SteamClient.Storage.SetString(String(searchResult.items[0].m_unAppID), g.gameid);
         collectionStore.SetAppsAsHidden([g.id], true);
-      await  SteamClient.RoamingStorage.DeleteKey(String(searchResult.items[0].m_unAppID)).catch(undefined=>undefined);
+      await  SteamClient.RoamingStorage.DeleteKey(String(searchResult.items[0].m_unAppID)).catch(()=>undefined);
         SteamClient.RoamingStorage.SetString(String(searchResult.items[0].m_unAppID), JSON.stringify({ result: 0 ,gameid: g.gameid}));
         console.log(g.gameid);
         g.appid = searchResult.items[0].m_unAppID;
@@ -142,22 +121,22 @@ async function installGame(g) {
         installedGame = JSON.stringify(installedGame);
         SteamClient.Storage.SetString('installedGames', installedGame);
       } catch (e) {
-       await SteamClient.Storage.DeleteKey(String(g.appid)).catch(undefined=>undefined);
-       await SteamClient.Storage.DeleteKey(g.gameid).catch(undefined=>undefined);
-       await SteamClient.RoamingStorage.DeleteKey(String(searchResult.items[0].m_unAppID)).catch(undefined=>undefined);
+       await SteamClient.Storage.DeleteKey(String(g.appid)).catch(()=>undefined);
+       await SteamClient.Storage.DeleteKey(g.gameid).catch(()=>undefined);
+       await SteamClient.RoamingStorage.DeleteKey(String(searchResult.items[0].m_unAppID)).catch(()=>undefined);
         message = e.message;
         res = false;
-       await SteamClient.RoamingStorage.DeleteKey(String(g.appid)).catch(undefined=>undefined);
+       await SteamClient.RoamingStorage.DeleteKey(String(g.appid)).catch(()=>undefined);
       }
     }
 
     return ws.send(JSON.stringify({ installGame: true, result: res, message: message }));
-  }
+  }else{console.log('no result: ',searchResult)}
 }
 
 async function uninstallGame(g) {
   try {
-    let installedGame = await SteamClient.Storage.GetString('installedGames').catch(undefined => undefined) || '[]';
+    let installedGame = await SteamClient.Storage.GetString('installedGames').catch(() => undefined) || '[]';
     installedGame = JSON.parse(installedGame);
 
     const target = installedGame.find(e => e.appid === g);
@@ -168,15 +147,107 @@ async function uninstallGame(g) {
     installedGame = installedGame.filter(e => e.appid !== g);
     SteamClient.Storage.SetString('installedGames', JSON.stringify(installedGame));
     collectionStore.SetAppsAsHidden([target.id], false);
-   await SteamClient.Storage.DeleteKey(target.gameid).catch(undefined=>undefined);
-   await SteamClient.Storage.DeleteKey(String(g)).catch(undefined=>undefined);
-   await SteamClient.RoamingStorage.DeleteKey(String(g)).catch(undefined=>undefined);
+   await SteamClient.Storage.DeleteKey(target.gameid).catch(()=>undefined);
+   await SteamClient.Storage.DeleteKey(String(g)).catch(()=>undefined);
+   await SteamClient.RoamingStorage.DeleteKey(String(g)).catch(()=>undefined);
     fetch(`http://localhost:3005/uninstall/?appid=${g}&uninstalled=1`);
   } catch (e) {
     fetch(`http://localhost:3005/uninstall/?appid=${g}&uninstalled=${e.message}`);
   }
 }
+let proxiedData =null;
 
+
+const amuI = setInterval(()=>{
+  
+ let amu = typeof appStore!=='undefined'?appStore.m_mapApps.updateValue_:null;
+ let adt= typeof appDetailsStore !=='undefined'?appDetailsStore.m_mapAppData.dehanceValue_:null;
+  const servok = waitForServerAndConnect();
+ if(servok&&amu&&adt){
+  clearInterval(amuI);
+  console.log('Connected to server');
+  //NotificationStore.TestAchievement(2114740);
+  ///getAvailableGames();
+  appStore.m_mapApps.updateValue_ =async function (...args) {
+   // console.log('update value',args[1]);
+      const j =  await SteamClient.Storage.GetString(String(args[0])).catch(()=>undefined)||null;
+    if(j&&!j.result) {
+     if( args[1].app_type!==1){return}
+      console.log(j);
+
+     /* args[1].GetPerClientData =  function GetPerClientData(e) {
+        let t;
+        switch (e) {
+        case "local":
+            t = this.local_per_client_data;
+            break;
+        case "mostavailable":
+            t = this.most_available_per_client_data;
+            break;
+        default:
+            t = this.selected_per_client_data
+        }
+    t.display_status = t.display_status === 31?11:t.display_status;
+        return t
+    };*/
+    args[1].m_gameid = j;
+    args[1].gameid = j;
+    args[1].GetGameID=()=>j;
+    args[1].BIsAppInBlockList = ()=>false;
+    args[1].BIsOwned = ()=> true;
+    args[1].per_client_data[0].display_status=args[1].per_client_data[0].display_status === 31?11:args[1].per_client_data[0].display_status;
+
+    }
+            return amu.apply(this, args)
+  }
+  
+  appDetailsStore.m_mapAppData.dehanceValue_ = function (...args) {
+    let check = false;
+    check = args[0]?.details?.unAppID ? true : false;
+    if (!check) return adt.apply(this, args);
+    
+    setTimeout(async () => {
+      const appID = String(args[0].details.unAppID);
+      let j;
+      try {
+        const raw = await SteamClient.RoamingStorage.GetString(appID).catch(() => undefined);
+        j = raw ? JSON.parse(raw) : { result: 0 };
+            
+        if (j.result === 1 && j.gameid) {
+         
+          const aDS = args[0].details.achievements;
+          if(aDS.nTotal===j.data.rgAchievements.length&&aDS.nAchieved===j.data.rgAchievements.filter(e=>e.bAchieved).length){return}
+          
+          const unAchived = j.data.rgAchievements.filter(e => !e.bAchieved)||[];
+          const achived = j.data.rgAchievements.filter(e => e.bAchieved)||[];
+          const nAchieved = achived.length||0;
+          const highlight = unAchived.filter(e => !e.bHidden)||[];
+          const achivedHidden = achived.filter(e => e.bHidden)||[];
+         aDS.nAchieved = nAchieved;
+         aDS.vecUnachieved = unAchived;
+         aDS.vecAchievedHidden = achivedHidden;
+            aDS.nTotal = j.data.rgAchievements?.length||0;
+               aDS.vecHighlight = highlight||[];
+           aDS.version = aDS.nTotal>0?5:2;
+    
+        
+    
+          const a = appStore.GetAppOverviewByAppID(args[0].details.unAppID);
+          ///a.per_client_data[0].display_status = a.per_client_data[0].display_status === 31 ? 11 : a.per_client_data[0].display_status;
+          a.m_gameid = j.gameid;
+         a.gameid = j.gameid;
+          a.GetGameID=()=>j.gameid;
+          appDetailsStore.AppDetailsChanged(args[0].details);
+            args[0].details.display_status = args[0].details.display_status === 31 ? 11 : args[0].details.display_status;
+          args[0].details.bIsFreeApp = true;
+        }
+      } catch (e) {
+  console.log(e);
+      }
+    },0);
+   return adt.apply(this, args);
+  };
+  
 const SAra = SteamClient.Apps.RegisterForAppDetails;
 
 SteamClient.Apps.RegisterForAppDetails =  function (...args) {
@@ -263,7 +334,6 @@ a?a.per_client_data[0].display_status = a.per_client_data[0].display_status === 
 
 
 
-let proxiedData =null;
 const SAa = SteamClient.Apps.GetMyAchievementsForApp;
 
 SteamClient.Apps.GetMyAchievementsForApp = async function (...args) {  
@@ -282,102 +352,9 @@ SteamClient.Apps.GetMyAchievementsForApp = async function (...args) {
   return SAa.apply(this, args);
 };
 
-
-const amuI = setInterval(()=>{
-  
- let amu = typeof appStore!=='undefined'?appStore.m_mapApps.updateValue_:null;
- let adt= typeof appDetailsStore !=='undefined'?appDetailsStore.m_mapAppData.dehanceValue_:null;
-
- if(amu&&adt){
-  clearInterval(amuI);
-  console.log('Connected to server');
-  //NotificationStore.TestAchievement(2114740);
-  ///getAvailableGames();
-  appStore.m_mapApps.updateValue_ =async function (...args) {
-   // console.log('update value',args[1]);
-      const j =  await SteamClient.Storage.GetString(String(args[0])).catch(undefined=>undefined)||null;
-    if(j&&!j.result) {
-     if( args[1].app_type!==1){return}
-      console.log(j);
-
-     /* args[1].GetPerClientData =  function GetPerClientData(e) {
-        let t;
-        switch (e) {
-        case "local":
-            t = this.local_per_client_data;
-            break;
-        case "mostavailable":
-            t = this.most_available_per_client_data;
-            break;
-        default:
-            t = this.selected_per_client_data
-        }
-    t.display_status = t.display_status === 31?11:t.display_status;
-        return t
-    };*/
-    args[1].per_client_data[0].display_status=args[1].per_client_data[0].display_status === 31?11:args[1].per_client_data[0].display_status;
-    args[1].m_gameid = j;
-    args[1].gameid = j;
-    args[1].GetGameID=()=>j;
-    args[1].BIsAppInBlockList = ()=>false;
-    args[1].BIsOwned = ()=> true;
-
-    }
-            return amu.apply(this, args)
-  }
-  
-  appDetailsStore.m_mapAppData.dehanceValue_ = function (...args) {
-    let check = false;
-    check = args[0]?.details?.unAppID ? true : false;
-    if (!check) return adt.apply(this, args);
-    
-    setTimeout(async () => {
-      const appID = String(args[0].details.unAppID);
-      let j;
-      try {
-        const raw = await SteamClient.RoamingStorage.GetString(appID).catch(() => undefined);
-        j = raw ? JSON.parse(raw) : { result: 0 };
-            
-        if (j.result === 1 && j.gameid) {
-         
-          const aDS = args[0].details.achievements;
-          if(aDS.nTotal===j.data.rgAchievements.length&&aDS.nAchieved===j.data.rgAchievements.filter(e=>e.bAchieved).length){return}
-          
-          const unAchived = j.data.rgAchievements.filter(e => !e.bAchieved)||[];
-          const achived = j.data.rgAchievements.filter(e => e.bAchieved)||[];
-          const nAchieved = achived.length||0;
-          const highlight = unAchived.filter(e => !e.bHidden)||[];
-          const achivedHidden = achived.filter(e => e.bHidden)||[];
-         aDS.nAchieved = nAchieved;
-         aDS.vecUnachieved = unAchived;
-         aDS.vecAchievedHidden = achivedHidden;
-            aDS.nTotal = j.data.rgAchievements?.length||0;
-               aDS.vecHighlight = highlight||[];
-           aDS.version = aDS.nTotal>0?5:2;
-    
-          args[0].details.display_status = args[0].details.display_status === 31 ? 11 : args[0].details.display_status;
-          args[0].details.bIsFreeApp = true;
-    
-          const a = appStore.GetAppOverviewByAppID(args[0].details.unAppID);
-          ///a.per_client_data[0].display_status = a.per_client_data[0].display_status === 31 ? 11 : a.per_client_data[0].display_status;
-          a.m_gameid = j.gameid;
-         a.gameid = j.gameid;
-          a.GetGameID=()=>j.gameid;
-          appDetailsStore.AppDetailsChanged(args[0].details);
-        }
-      } catch (e) {
-  console.log(e);
-      }
-    },0);
-   return adt.apply(this, args);
-  };
-  
- }
-},1000);
-
 const TerminateApp= SteamClient.Apps.TerminateApp;
 SteamClient.Apps.TerminateApp = async function (...args) {
-    const e = await SteamClient.Storage.GetString(args[0]).catch(undefined=>undefined)||null;
+    const e = await SteamClient.Storage.GetString(args[0]).catch(()=>undefined)||null;
     if(e&&!e.result){args[0]=e;
       console.log(args);
      setTimeout(()=>{ ws.send(JSON.stringify({ c: 'unwatch'}));},5000);
@@ -389,7 +366,7 @@ SteamClient.Apps.TerminateApp = async function (...args) {
     SteamClient.Apps.RunGame =  function (...args) {
       //console.log(args);
       setTimeout(async()=>{
-        const e = await SteamClient.Storage.GetString(args[0]).catch(undefined=>undefined)||null;
+        const e = await SteamClient.Storage.GetString(args[0]).catch(()=>undefined)||null;
         if(e&&!e.result){
          ws.send(JSON.stringify({ c: 'watch', appid: e}));
          const int = setInterval(async () => {
@@ -401,7 +378,9 @@ SteamClient.Apps.TerminateApp = async function (...args) {
           }      
           try {
               let uid = 'overlay_uid' + vg[0]?.unPID;
-              const overlayWindow = g_PopupManager.m_mapPopups.data_.get(uid)?.value_?.window;
+              const tryOW = g_PopupManager.m_mapPopups.data_.get(uid) || g_PopupManager.m_mapPopups.data_.get('desktop' + uid);
+              if (!tryOW) return;
+              const overlayWindow = tryOW.value_?.window;
       
               if (overlayWindow?.document) {
                try{ overlayWindow.eval(`
@@ -418,7 +397,6 @@ SteamClient.Apps.TerminateApp = async function (...args) {
                    }
                   ///overlayWindow.eval(uis);
               } else {
-
                   console.warn('Overlay window not found');
               }
           } catch (err) {
@@ -430,6 +408,10 @@ SteamClient.Apps.TerminateApp = async function (...args) {
         };},0);
             return runG.apply(this, args);
         }
+ }
+},1000);
+
+
 
        async function updateAch(a){
           const raw = await SteamClient.RoamingStorage.GetString(a.appid).catch(() => undefined);
@@ -442,11 +424,13 @@ SteamClient.Apps.TerminateApp = async function (...args) {
            g.rtUnlocked = e[1].earned_time;
            SteamClient.RoamingStorage.SetString(a.appid, JSON.stringify(j));
        let vg='overlay_uid'+(await SteamClient.Overlay.GetOverlayBrowserInfo())[0].unPID;
-       vg=g_PopupManager.m_mapPopups.data_.get(vg);
-       vg=vg.value_.window;
+       vg=g_PopupManager.m_mapPopups.data_.get(vg) || g_PopupManager.m_mapPopups.data_.get('desktop'+vg);
+       vg=vg.value_?.window;
        SteamClient.Browser.HideCursorUntilMouseEvent();
            vg.document.body.children[0].style.display = 'none'
-           SteamClient.Overlay.SetOverlayState(j.gameid,2);
+           await delay(2000);
+           SteamClient.Overlay.SetOverlayState(a.appid,2);
+           await delay(1000);
            vg.showAchievement(
             g.strImage,
             g.strName,
@@ -454,8 +438,8 @@ SteamClient.Apps.TerminateApp = async function (...args) {
           );
           Ach?.LoadMyAchievements(Number(a.appid));
 
-        await delay(5000);
-          SteamClient.Overlay.SetOverlayState(j.gameid,0);
+        await delay(3000);
+          SteamClient.Overlay.SetOverlayState(a.appid,0);
           
          setTimeout(()=>{ vg.document.body.children[0].style.display = 'block';},3000);
          
@@ -463,9 +447,7 @@ SteamClient.Apps.TerminateApp = async function (...args) {
           }
         }
 
-
-
-        const uis = `
+ const uis = `
  style = document.createElement('style');
 style.textContent = \`
   #notification-container {
@@ -576,13 +558,8 @@ function showAchievement(iconUrl, title, description) {
   setTimeout(() => {
     notification.remove();
   }, 5000);
-}`
-
-  
-
+}`;
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
+};

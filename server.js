@@ -28,11 +28,6 @@ const { json } = express;
 
 const userHomeDir = os.homedir();
 
-const storageDirectory = 'C:/database/';
-if (!existsSync(storageDirectory)) {
-  mkdirSync(storageDirectory, { recursive: true });
-}
-
 
 
 let steamPath;
@@ -42,10 +37,10 @@ async function getSystemChromePath() {
   chromePath = await new Promise((resolve, reject) => {
     const regKey = 'HKCR\\ChromeHTML\\shell\\open\\command';
     exec(`reg query "${regKey}" /ve`, (error, stdout) => {
-      if (error || !stdout) return reject(new Error('Failed to locate Chrome in registry'));
-      const match = stdout.match(/"([^"]*chrome\.exe)"/i);
+      if (error || !stdout) return reject(log('Failed to locate Chrome in registry'));
+const match = stdout.match(/"([^"]+?chrome\.exe)"/i);
       if (match && match[1]) return resolve(match[1]);
-      reject(new Error('chrome.exe path not found in registry'));
+      reject( log('chrome.exe path not found in registry'));
     });
   });
 }
@@ -54,10 +49,11 @@ async function getSteamPath() {
   d = await new Promise((resolve, reject) => {
     const regKey = 'HKCR\\steam\\Shell\\Open\\Command';
     exec(`reg query "${regKey}" /ve`, (error, stdout) => {
-      if (error || !stdout) return reject(new Error('Failed to locate Steam in registry'));
-      const match = stdout.match(/"([^"]*steam\.exe)"/i);
+      if (error || !stdout) return reject( log('Failed to locate Steam in registry'));
+      const match = stdout.match(/"([^"]+?steam\.exe)"/i);
+
       if (match && match[1]) return resolve(match[1]);
-      reject(new Error('steam.exe path not found in registry'));
+      reject( log('steam.exe path not found in registry'));
     });
   });
   return d;
@@ -66,9 +62,9 @@ async function getSteamPath() {
 async function getPaths() {
   await getSystemChromePath();
   steamPath = await getSteamPath();
-  steamPath = steamPath.replace(/\\steam\.exe\\?/, '\\');
-  console.log('Chrome Path:', chromePath);
-  console.log('Steam Path:', steamPath);
+steamPath = path.dirname(steamPath);
+  log('Chrome Path:', chromePath);
+  log('Steam Path:', steamPath);
 }
 
 getPaths();
@@ -139,7 +135,7 @@ app.get('/achievements', async (req, res) => {
 
     res.json(rgAchievements);
   } catch (err) {
-    console.error(err.stack || err);
+    log(err.stack || err);
     res.status(500).send('Error reading achievements data');
   }
 });
@@ -215,6 +211,8 @@ app.get('/setup', async (req, res) => {
     if (!steamApiPath) {
       return res.status(400).send('This program only works with valid Steam games containing steam_api.dll or steam_api64.dll');
     }
+    fs.writeFileSync(path.join(gameDir,'steam_appid.txt'), appid);
+
     if(!fs.existsSync(path.join(os.homedir(), 'AppData', 'Roaming', 'steam+', appid))){
       fs.mkdirSync(path.join(os.homedir(), 'AppData', 'Roaming', 'steam+', appid), { recursive: true });
     }
@@ -257,11 +255,11 @@ app.get('/setup', async (req, res) => {
       }
       "UserConfig"
       {
-          "language"    "english"
+          "language"    "french"
       }
       "MountedConfig"
       {
-          "language"    "english"
+          "language"    "french"
       }
   }
   `;
@@ -300,13 +298,12 @@ if(steamclientPath){
        configsApp!==undefined && configsApp!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'configs.app.ini'), configsApp);
         depot!==undefined && depot!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'depots.txt'), depot);
        rgAchievements!==undefined && rgAchievements!==null && fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'rgAchievements.json'), JSON.stringify(rgAchievements));
-       fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'disable_overlay.txt'), '');
+       //fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'disable_overlay.txt'), '');
    return res.send(`${appname} is installed successfully!`);
   } catch (err) {
     log(err);
     res.status(500).send('see logs for more details:', err.message);    
-  
-  }
+    }
 });
 let lres=new Map();
 
@@ -344,7 +341,6 @@ app.get('/uninstall', async (req, res) => {
         fs.renameSync(filePath+'.bak', filePath);
       }
     });  
-
     const steamAppsDir = path.join(steamPath, 'steamapps');
     const appManifestFile = path.join(steamAppsDir, `appmanifest_${appid}.acf`);
 
@@ -416,7 +412,13 @@ async function fetchAppDetails(appid, retryCount = 3) {
   const page = await browser.newPage();
 
   try {
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36');
+    let UA ='';
+    const UAF = path.join(os.homedir(), 'AppData', 'Roaming', 'steam+', 'ua.txt');
+if (fs.existsSync(UAF)) {
+    UA = fs.readFileSync(UAF, 'utf8').trim();
+}
+   const userAgent = UA || 'Mozilla/5.0 (Windows NT 10.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+      await page.setUserAgent(userAgent);
     await page.setJavaScriptEnabled(true);
     let $ = null;
     let catchedOnes = [];
@@ -609,7 +611,7 @@ wss.on('connection', function connection(ws) {
       watchObj.appid = appid;
       watchObj.watchLocked = true;
       const appData = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-      const filePath = path.join(appData, 'Goldberg SteamEmu Saves', appid);
+      const filePath = path.join(appData, 'GSE Saves', appid);
       let of = {};
       if (fs.existsSync(path.join(filePath,'achievements.json'))) {
         try{
@@ -657,12 +659,12 @@ watchObj.appid = null;watchObj.watchLocked = false;
   
 
   ws.on('close', () => {
-    console.log('Client disconnected');
+    log('Client disconnected');
   });
-});
+});  
 
 wss.on('error', (error) => {
-  console.error('WebSocket error:', error);
+  log('WebSocket error:', error);
 });
 
 
@@ -671,9 +673,9 @@ function stopServer() {
  
   try {
     process.kill(process.pid);
-    console.log(`Server with PID ${process.pid} stopped.`);
+    log(`Server with PID ${process.pid} stopped.`);
   } catch (err) {
-    console.error('Failed to stop server:', err.message);
+   log('Failed to stop server:', err.message);
   }
 }
 

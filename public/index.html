@@ -201,8 +201,16 @@ margin-top: 2rem;
       <div class="settingsTable">
       </div>
     </div>
-    <script>
-     const tab = document.querySelector('.settingsTable');
+    <script >
+      const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  let UA = '';
+ const UAF = path.join(os.homedir(), 'AppData', 'Roaming', 'steam+', 'ua.txt');
+if (fs.existsSync(UAF)) {
+    UA = fs.readFileSync(UAF, 'utf8').trim();
+}
+    const tab = document.querySelector('.settingsTable');
 let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;
@@ -260,7 +268,7 @@ switch (e.type){
     }, 500);
     closeSettings();
     loadingLayout.classList.add('show');
-    const fixDetails = await fetch(`http://localhost:3005/fixGameDetails/?appid=${e.appid}`).then(res=>res).catch(err=>err);
+       const fixDetails = await fetch(`http://localhost:3005/fixGameDetails/?appid=${e.appid}`).then(res=>res).catch(err=>err);
     if(!fixDetails.ok){
       loadingText.textContent = `Error fixing ${g.name} details: Network error`;
       clearInterval(stateLoader);
@@ -283,7 +291,25 @@ break;
       ).join('')}
       `;
 break;
-  case 'click':
+case 'UserAgent':
+  const userInput = await showUserAgentPrompt(UA || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36','Enter new User-Agent:');
+
+  if (userInput === null) {
+    loadingText.textContent = 'UserAgent update cancelled';
+  } else if (userInput === UA) {
+    loadingText.textContent = 'UserAgent is the same as before';
+  } else if (userInput.length > 0) {
+    const filePath = path.join(os.homedir(), 'AppData', 'Roaming', 'steam+', 'ua.txt');
+    fs.writeFileSync(filePath, userInput);
+    UA = userInput;
+    loadingText.textContent = `UserAgent updated to: ${userInput}`;
+  } else {
+    loadingText.textContent = 'UserAgent cannot be empty';
+  }
+  break;
+
+
+case 'click':
     const gameD =tab.dataset?.game? JSON.parse(tab.dataset.game) : JSON.parse(e.target.dataset.game);
    tab.innerHTML = ` <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h2 style="margin: 0; color: #ffffff;">${gameD.name}</h2>
@@ -292,6 +318,8 @@ break;
         <div style="margin-bottom: 1rem;gap: 0.5rem;display: grid;">
           <button id="exampleOption" onclick="openSettings({type: 'details'})" style="width: 100%; background-color: #31373b70; color: white; border: none; border-radius: 4px; padding: 0.3rem 0.6rem; cursor: pointer;">Details</button>
           <button id="exampleOption" onclick="openSettings({type: 'fixDetails',appid:${gameD.appid}});" style="width: 100%; background-color: #31373b70; color: white; border: none; border-radius: 4px; padding: 0.3rem 0.6rem; cursor: pointer;">Fix Game Details & Achievements</button>
+          <button id="exampleOption" onclick="openSettings({type: 'UserAgent'});" style="width: 100%; background-color: #31373b70; color: white; border: none; border-radius: 4px; padding: 0.3rem 0.6rem; cursor: pointer;">Modify UserAgent</button>
+
           </div>`;
        
 if(!layout.classList.contains('show')){
@@ -323,6 +351,34 @@ break;
       }
 }
 
+async function showUserAgentPrompt(defaultValue,promptMs) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('uaPromptModal');
+    const input = document.getElementById('uaInput');
+    const okBtn = document.getElementById('uaOK');
+    const cancelBtn = document.getElementById('uaCancel');
+document.querySelector('.promptMs').textContent = promptMs || 'Enter value:';
+    input.value = defaultValue || '';
+    modal.style.display = 'block';
+    input.focus();
+
+    const close = () => {
+      modal.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+    };
+
+    okBtn.onclick = () => {
+      close();
+      resolve(input.value.trim());
+    };
+
+    cancelBtn.onclick = () => {
+      close();
+      resolve(null);
+    };
+  });
+}
 
 
     </script> 
@@ -439,6 +495,7 @@ game = installedGames.find(g => g.gameid === installBtn.dataset.id)||availableGa
             installedGames = installedGames.filter(g => g.gameid !== game.gameid);
            }
         } else {
+              game.name =await showUserAgentPrompt(game.name,'Confirm game name:');
             sl = setInterval(() => {
       dotCount = (dotCount + 1) % 4;
       loadingText.textContent =  `Installing ${game.name}` + '.'.repeat(dotCount);
@@ -469,5 +526,15 @@ if(e.target.classList.contains('#settings')){
 }
       });
   </script>
+  <div id="uaPromptModal" style="display:none; position:fixed; top:40%; left:50%; transform:translate(-50%, -50%);
+ background:#1f1f1f; color:white; padding:1.5rem; border-radius:10px; z-index:9999; box-shadow:0 0 20px rgba(0,0,0,0.4);">
+  <div class="promptMs" style="margin-bottom:1rem; font-size:1rem;">Enter new User-Agent:</div>
+  <input id="uaInput" type="text" style="width: 400px; padding: 0.5rem; background:#2b2b2b; border:1px solid #555; color:white; border-radius:5px;" />
+  <div style="margin-top:1rem; display:flex; justify-content: flex-end; gap: 1rem;">
+    <button id="uaCancel" style="padding: 0.4rem 1rem; background:#555; border:none; border-radius:4px; color:white; cursor:pointer;">Cancel</button>
+    <button id="uaOK" style="padding: 0.4rem 1rem; background:#0078d4; border:none; border-radius:4px; color:white; cursor:pointer;">OK</button>
+  </div>
+</div>
+
 </body>
 </html>

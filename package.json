@@ -27,6 +27,9 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
+    "win": {
+    "requestedExecutionLevel": "requireAdministrator"
+  },
     "asar": true,
     "asarUnpack": [
       "icon.ico",

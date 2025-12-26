@@ -83,11 +83,37 @@ function startServerDetached() {
       app.quit();
   }
 
+  let mwin = null;
+ function openManager(){
+  if(mwin && !mwin.isDestroyed()) {
+        mwin.focus();
+    } else {
+    mwin = new BrowserWindow({
+        width: 900,
+        height: 700,
+        resizable: true,
+    skipTaskbar: true,
+        fullscreen: false,
+        frame: true,
+        webPreferences: {
+           nodeIntegration: true,
+    contextIsolation: false,
+        }
+    });
+
+    mwin.loadURL('http://localhost:3005/NSGM');
+    mwin.on('closed', () => {
+        mwin = null;
+    });
+    mwin.on('minimize', () => mwin.close());
+  }
+  }
+
 let forServer=false;
 
 for (const arg of process.argv) {
     
-    if (arg.includes('steam+://')) {
+    if (arg.includes('steam+://server')) {
       forServer = true;
       log(`Launched with protocol URL: ${arg}`);
       require(path.join(path.dirname(process.execPath), 'app','server.js'));
@@ -97,7 +123,11 @@ for (const arg of process.argv) {
         log(`Launched with protocol URL: ${JSON.stringify(arg)}`);
 forServer = true;
  
+    }else if(arg.includes('steam+://manager')){
+openManager(); 
     }
+
+
   }
 
 
@@ -107,7 +137,7 @@ async function getSteamPath() {
     const regKey = 'HKCR\\steam\\Shell\\Open\\Command';
     exec(`reg query "${regKey}" /ve`, (error, stdout) => {
       if (error || !stdout) return reject(new Error('Failed to locate Steam in registry'));
-      const match = stdout.match(/"([^"]*steam\.exe)"/i);
+      const match = stdout.match(/"([^"]+?steam\.exe)"/i);
       if (match && match[1]) return resolve(match[1]);
       reject(new Error('steam.exe path not found in registry'));
     });
@@ -206,7 +236,7 @@ ipcMain.handle('setupManager', async () => {
     modifiedContent = fs.readFileSync(path.join(steamPath,'chunk~2dcc5aaf7.js'), 'utf8');
     if(!modifiedContent.includes('//# sourceMappingURL')) return false;
     modifiedContent = modifiedContent.replace('//# sourceMappingURL', '//# sou');
-    modifiedContent = modifiedContent.replace('"OnAchievementChange",null);const y=new f;', '"OnAchievementChange",null);const y=new f;window.Ach=y;');
+    modifiedContent = modifiedContent.replace('const b=new f;', 'const b=new f;window.Ach=b;');
     fs.writeFileSync(path.join(steamPath,'chunk~2dcc5aaf7.js'),modifiedContent,'utf-8');
     return false;
     } catch (err) {
@@ -283,25 +313,3 @@ app.on('activate', () => {
 });
 
 
-
- function openManager(){
-    mwin = new BrowserWindow({
-        width: 900,
-        height: 700,
-        resizable: true,
-    skipTaskbar: true,
-        fullscreen: false,
-        frame: true,
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: false
-        }
-    });
-
-    mwin.loadURL('http://localhost:3005/NSGM');
-    mwin.on('closed', () => {
-        mwin = null;
-    });
-    mwin.on('minimize', () => mwin.close());
-
-  }
