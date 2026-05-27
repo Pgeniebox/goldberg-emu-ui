@@ -1,17 +1,7 @@
 const { app } = require('electron');
-const { execSync, exec } = require('child_process');
+const { execSync,exec ,execFile} = require('child_process');
 
-function isAdmin() {
-  try {
-    const out = execSync(
-      'net session',
-      { stdio: 'ignore' }
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -27,6 +17,17 @@ if (!gotTheLock) {
   app.quit();
   process.exit(0);
 }
+function isAdmin() {
+  try {
+    const out = execSync(
+      'net session',
+      { stdio: 'ignore' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 if (!isAdmin()) {
   exec(
@@ -39,11 +40,10 @@ if (!isAdmin()) {
 }
 
 
-const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
+const {  BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const { execSync,exec ,execFile} = require('child_process');
 const protocol = 'steam+';
 const exePath = process.execPath;
 const os = require('os');
