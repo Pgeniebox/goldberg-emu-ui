@@ -295,6 +295,7 @@ if(steamclientPath){
     }
      
      fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'steam_appid.txt'), appid);
+    fs.writeFileSync(path.join(steamApiDir , 'steam_settings', 'disable_overlay.txt'), '');
      const appDetails = await fetchAppDetails(appid);
      const {
        rgAchievements=undefined,

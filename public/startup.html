@@ -51,7 +51,7 @@
       <button onclick="window.api.close()" class="px-2">×</button>
     </div>
   </div>
-<div class="steamService" onclick="window.open('steam+://server')">Run Steam plus service >></div>
+<div class="steamService" onclick="open('steam+://server');setTimeout(() => { window.api.close(); }, 2000 )">Run Steam plus service >></div>
 
   <!-- App content -->
   <div id="app" class="w-full max-w-md p-6 mx-auto rounded-2xl bg-gray-800 shadow-xl text-center space-y-6 transition-all duration-500 mt-10">

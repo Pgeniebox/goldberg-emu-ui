@@ -1,7 +1,40 @@
-const gotTheLock = require('electron').app.requestSingleInstanceLock();
+const { app } = require('electron');
+const { execSync, exec } = require('child_process');
+
+function isAdmin() {
+  try {
+    const out = execSync(
+      'net session',
+      { stdio: 'ignore' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+if( process.argv.includes('steam+://server')) {
+
+sleep(10000);
+
+}
+
+const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  require('electron').app.quit();
+  app.quit();
+  process.exit(0);
+}
+
+if (!isAdmin()) {
+  exec(
+    `powershell -Command "Start-Process -FilePath '${process.execPath}' -Verb runAs"`,
+    () => {}
+  );
+
+  app.quit();
   process.exit(0);
 }
 
