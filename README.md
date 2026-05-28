@@ -1,5 +1,5 @@
 # Non-steam-games-manager
-
+https://www.youtube.com/watch?v=59eJTwkKah4
 How to use:
 launch the setup to install steam+.
 after install you should run the installed application to setup your existing steam application.
