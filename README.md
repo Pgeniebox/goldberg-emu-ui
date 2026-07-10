@@ -1,3 +1,4 @@
+JUST FOR TEST!!!!!!
 # Non-steam-games-manager
 https://www.youtube.com/watch?v=59eJTwkKah4
 CONDITION: Steam must be run with admin previlege.
